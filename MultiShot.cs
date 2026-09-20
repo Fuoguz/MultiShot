@@ -361,4 +361,80 @@ namespace MultiShot
                 case "CopiedStatus": return "Queue: 0 · Copied {0} screenshots to Clipboard";
                 case "CopiedTitle": return "Copied {0} screenshots";
                 case "CopiedBody": return "Apps that support multi-file paste will receive the whole group at once.";
-                case "ClipboardFailed": return "Failed to w
+                case "ClipboardFailed": return "Failed to write to Clipboard:\n{0}";
+                case "Cancelled": return "Screenshot group cancelled.";
+                case "Capturing": return "Batch capture: {0} screenshots";
+                case "Hint": return "{0} Capture · {1} Undo · {2} Finish";
+                case "HintPartial": return "Some global hotkeys are unavailable. Change them in Settings or use the buttons.";
+                case "Toast": return "Captured {0}   ·   {1} to finish";
+                case "OverlayInstruction": return "Click: capture window    Drag: free region    Right click / Esc: cancel";
+                case "OverlayCount": return "Captured  {0}";
+                case "ModeManual": return "Free region";
+                case "ModeWindow": return "Window";
+                case "SettingsTitle": return "MultiShot Settings";
+                case "Language": return "Language";
+                case "LanguageAuto": return "System default / 跟随系统";
+                case "LanguageZh": return "简体中文";
+                case "LanguageEn": return "English";
+                case "CaptureHotkey": return "Capture hotkey";
+                case "UndoHotkey": return "Undo hotkey";
+                case "FinishHotkey": return "Finish hotkey";
+                case "HotkeyHelp": return "Focus a field and press the new key combination. Using Ctrl / Alt / Shift is recommended.";
+                case "Save": return "Save";
+                case "ResetDefaults": return "Reset Defaults";
+                case "Close": return "Cancel";
+                case "ModifierRequired": return "A hotkey must include at least one modifier: Ctrl, Alt, Shift, or Win.";
+                case "DuplicateHotkeys": return "The three hotkeys must be different.";
+                case "HotkeyConflict": return "Could not register {0}. Another app may already be using it.\n\nNothing was saved and your previous hotkeys are still active.";
+                case "SettingsSaved": return "Settings saved";
+                case "SettingsSavedBody": return "Language and hotkeys are active immediately.";
+                default: return key;
+            }
+        }
+    }
+
+    internal sealed class SettingsForm : Form
+    {
+        private readonly ComboBox languageCombo;
+        private readonly TextBox captureBox;
+        private readonly TextBox undoBox;
+        private readonly TextBox finishBox;
+        private readonly Label helpLabel;
+        private readonly Button saveButton;
+        private readonly Button resetButton;
+        private readonly Button cancelButton;
+
+        internal string SelectedLanguage { get; private set; }
+        internal HotkeyDefinition CaptureHotkey { get; private set; }
+        internal HotkeyDefinition UndoHotkey { get; private set; }
+        internal HotkeyDefinition FinishHotkey { get; private set; }
+
+        internal SettingsForm(AppSettings settings)
+        {
+            Text = I18n.T("SettingsTitle");
+            Width = 430;
+            Height = 300;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterParent;
+            ShowInTaskbar = false;
+
+            AddLabel(I18n.T("Language"), 20, 20, 130);
+            languageCombo = new ComboBox
+            {
+                Left = 170,
+                Top = 17,
+                Width = 220,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            languageCombo.Items.Add(I18n.T("LanguageAuto"));
+            languageCombo.Items.Add(I18n.T("LanguageZh"));
+            languageCombo.Items.Add(I18n.T("LanguageEn"));
+            languageCombo.SelectedIndex = settings.Language == "zh-CN" ? 1 : settings.Language == "en" ? 2 : 0;
+            Controls.Add(languageCombo);
+
+            AddLabel(I18n.T("CaptureHotkey"), 20, 65, 130);
+            captureBox = CreateHotkeyBox(settings.Capture, 62);
+            AddLabel(I18n.T("UndoHotkey"), 20, 105, 130);
+            undoBox = CreateHotkeyBox(setti
