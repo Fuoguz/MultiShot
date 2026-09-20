@@ -1787,4 +1787,74 @@ namespace MultiShot
             return new Rectangle(x, y, w, h);
         }
 
-        protected override void Di
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && desktop != null)
+                desktop.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
+    internal static class ClipboardImageBuilder
+    {
+        internal static Bitmap CreatePreview(List<string> files)
+        {
+            if (files == null || files.Count == 0) return null;
+
+            List<Image> images = new List<Image>();
+            try
+            {
+                int maxOriginalWidth = 1;
+                long totalOriginalHeight = 0;
+
+                foreach (string file in files)
+                {
+                    Image img = Image.FromFile(file);
+                    images.Add(img);
+                    maxOriginalWidth = Math.Max(maxOriginalWidth, img.Width);
+                    totalOriginalHeight += img.Height;
+                }
+
+                const int maxWidth = 1600;
+                const int maxHeight = 12000;
+                const int gap = 10;
+
+                double scale = Math.Min(1.0, (double)maxWidth / maxOriginalWidth);
+                double scaledHeight = totalOriginalHeight * scale + gap * Math.Max(0, images.Count - 1);
+                if (scaledHeight > maxHeight)
+                    scale *= (double)maxHeight / scaledHeight;
+
+                int canvasWidth = 1;
+                int canvasHeight = gap * Math.Max(0, images.Count - 1);
+                foreach (Image img in images)
+                {
+                    canvasWidth = Math.Max(canvasWidth, Math.Max(1, (int)Math.Round(img.Width * scale)));
+                    canvasHeight += Math.Max(1, (int)Math.Round(img.Height * scale));
+                }
+
+                Bitmap result = new Bitmap(canvasWidth, canvasHeight, PixelFormat.Format32bppArgb);
+                using (Graphics g = Graphics.FromImage(result))
+                {
+                    g.Clear(Color.White);
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                    int y = 0;
+                    foreach (Image img in images)
+                    {
+                        int w = Math.Max(1, (int)Math.Round(img.Width * scale));
+                        int h = Math.Max(1, (int)Math.Round(img.Height * scale));
+                        g.DrawImage(img, new Rectangle(0, y, w, h));
+                        y += h + gap;
+                    }
+                }
+                return result;
+            }
+            finally
+            {
+                foreach (Image img in images)
+                    img.Dispose();
+            }
+        }
+    }
+}
