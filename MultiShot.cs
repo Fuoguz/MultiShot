@@ -1668,4 +1668,123 @@ namespace MultiShot
             if (TryFindTopLevelWindowAt(screenPoint, out screenRect))
             {
                 Rectangle clientRect = new Rectangle(
-          
+                    screenRect.Left - virtualScreen.Left,
+                    screenRect.Top - virtualScreen.Top,
+                    screenRect.Width,
+                    screenRect.Height);
+
+                hoverWindowRect = Rectangle.Intersect(ClientRectangle, clientRect);
+                hasHoverWindow = hoverWindowRect.Width > 2 && hoverWindowRect.Height > 2;
+            }
+            else
+            {
+                hoverWindowRect = Rectangle.Empty;
+                hasHoverWindow = false;
+            }
+        }
+
+        private bool TryFindTopLevelWindowAt(Point screenPoint, out Rectangle rect)
+        {
+            rect = Rectangle.Empty;
+            IntPtr hwnd = NativeMethods.GetTopWindow(IntPtr.Zero);
+
+            while (hwnd != IntPtr.Zero)
+            {
+                try
+                {
+                    if (NativeMethods.IsWindowVisible(hwnd))
+                    {
+                        uint pid;
+                        NativeMethods.GetWindowThreadProcessId(hwnd, out pid);
+                        if (pid != 0 && pid != currentProcessId && !IsCloaked(hwnd))
+                        {
+                            Rectangle candidate;
+                            if (TryGetWindowBounds(hwnd, out candidate) &&
+                                candidate.Width > 20 && candidate.Height > 20 &&
+                                candidate.Contains(screenPoint))
+                            {
+                                rect = candidate;
+                                return true;
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                hwnd = NativeMethods.GetWindow(hwnd, NativeMethods.GW_HWNDNEXT);
+            }
+
+            return false;
+        }
+
+        private static bool IsCloaked(IntPtr hwnd)
+        {
+            try
+            {
+                int cloaked;
+                int hr = NativeMethods.DwmGetWindowAttribute(hwnd,
+                    NativeMethods.DWMWA_CLOAKED, out cloaked, sizeof(int));
+                return hr == 0 && cloaked != 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryGetWindowBounds(IntPtr hwnd, out Rectangle rect)
+        {
+            rect = Rectangle.Empty;
+            NativeMethods.RECT nativeRect;
+
+            try
+            {
+                int hr = NativeMethods.DwmGetWindowAttribute(hwnd,
+                    NativeMethods.DWMWA_EXTENDED_FRAME_BOUNDS,
+                    out nativeRect, Marshal.SizeOf(typeof(NativeMethods.RECT)));
+                if (hr != 0)
+                {
+                    if (!NativeMethods.GetWindowRect(hwnd, out nativeRect))
+                        return false;
+                }
+            }
+            catch
+            {
+                if (!NativeMethods.GetWindowRect(hwnd, out nativeRect))
+                    return false;
+            }
+
+            int width = nativeRect.Right - nativeRect.Left;
+            int height = nativeRect.Bottom - nativeRect.Top;
+            if (width <= 0 || height <= 0) return false;
+
+            rect = new Rectangle(nativeRect.Left, nativeRect.Top, width, height);
+            return true;
+        }
+
+        private void OnKeyDownCapture(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                DialogResult = DialogResult.Cancel;
+                Close();
+            }
+        }
+
+        private static double Distance(Point a, Point b)
+        {
+            int dx = a.X - b.X;
+            int dy = a.Y - b.Y;
+            return Math.Sqrt((double)dx * dx + (double)dy * dy);
+        }
+
+        private static Rectangle Normalize(Point a, Point b)
+        {
+            int x = Math.Min(a.X, b.X);
+            int y = Math.Min(a.Y, b.Y);
+            int w = Math.Abs(a.X - b.X);
+            int h = Math.Abs(a.Y - b.Y);
+            return new Rectangle(x, y, w, h);
+        }
+
+        protected override void Di
