@@ -756,9 +756,13 @@ namespace MultiShot
             Controls.Add(cancelButton);
             Controls.Add(settingsButton);
 
+            Icon appIcon = null;
+            try { appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            if (appIcon != null) Icon = appIcon;
+
             trayIcon = new NotifyIcon
             {
-                Icon = SystemIcons.Application,
+                Icon = appIcon ?? SystemIcons.Application,
                 Text = I18n.T("TrayIdle"),
                 Visible = true
             };
