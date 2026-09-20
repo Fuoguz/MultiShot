@@ -296,4 +296,69 @@ namespace MultiShot
                 case "StillRunningTitle": return "MultiShot 仍在运行";
                 case "StillRunningBody": return "按 {0} 可继续截图。";
                 case "CaptureFailed": return "截图失败：\n{0}";
-                case 
+                case "NothingToUndo": return "没有可以撤销的截图。";
+                case "UndoRemaining": return "已撤销上一张，当前还有 {0} 张";
+                case "UndoEmpty": return "已撤销，当前没有截图";
+                case "NeedShot": return "还没有截图，先截一张。";
+                case "ClipboardUnavailable": return "无法访问 Windows 剪贴板。";
+                case "CopiedStatus": return "当前队列：0 张 · 已复制 {0} 张到剪贴板";
+                case "CopiedTitle": return "已复制 {0} 张截图";
+                case "CopiedBody": return "支持多文件粘贴的软件会一次收到整组截图。";
+                case "ClipboardFailed": return "写入剪贴板失败：\n{0}";
+                case "Cancelled": return "已取消这组截图。";
+                case "Capturing": return "连续截图中：已截 {0} 张";
+                case "Hint": return "{0} 截图 · {1} 撤销 · {2} 完成";
+                case "HintPartial": return "部分全局快捷键被占用；可在设置中修改，或直接点按钮使用。";
+                case "Toast": return "已截 {0} 张   ·   {1} 完成";
+                case "OverlayInstruction": return "单击：截取当前窗口    拖拽：自由框选    右键 / Esc：取消";
+                case "OverlayCount": return "已截  {0} 张";
+                case "ModeManual": return "自由框选";
+                case "ModeWindow": return "窗口";
+                case "SettingsTitle": return "MultiShot 设置";
+                case "Language": return "语言";
+                case "LanguageAuto": return "跟随系统 / System default";
+                case "LanguageZh": return "简体中文";
+                case "LanguageEn": return "English";
+                case "CaptureHotkey": return "截图快捷键";
+                case "UndoHotkey": return "撤销快捷键";
+                case "FinishHotkey": return "完成快捷键";
+                case "HotkeyHelp": return "点击输入框后直接按新的组合键。建议至少包含 Ctrl / Alt / Shift。";
+                case "Save": return "保存";
+                case "ResetDefaults": return "恢复默认";
+                case "Close": return "取消";
+                case "ModifierRequired": return "快捷键需要至少包含 Ctrl、Alt、Shift 或 Win 中的一个修饰键。";
+                case "DuplicateHotkeys": return "三组快捷键不能相同。";
+                case "HotkeyConflict": return "无法注册快捷键 {0}。它可能已被其他程序占用。\n\n设置未保存，原快捷键仍然有效。";
+                case "SettingsSaved": return "设置已保存";
+                case "SettingsSavedBody": return "语言和快捷键已立即生效。";
+                default: return key;
+            }
+        }
+
+        private static string En(string key)
+        {
+            switch (key)
+            {
+                case "AlreadyRunning": return "MultiShot is already running.\n\nFind it in the system tray, or press {0} to capture.";
+                case "NoShots": return "No pending screenshots";
+                case "Capture": return "Capture";
+                case "Undo": return "Undo Last";
+                case "Finish": return "Finish & Copy";
+                case "Cancel": return "Cancel Group";
+                case "Settings": return "Settings";
+                case "ShowController": return "Show Controller";
+                case "Exit": return "Exit";
+                case "TrayIdle": return "MultiShot - batch screenshot clipboard";
+                case "TrayPending": return "MultiShot - {0} pending";
+                case "StillRunningTitle": return "MultiShot is still running";
+                case "StillRunningBody": return "Press {0} to keep capturing.";
+                case "CaptureFailed": return "Capture failed:\n{0}";
+                case "NothingToUndo": return "There is no screenshot to undo.";
+                case "UndoRemaining": return "Last screenshot removed. {0} remaining.";
+                case "UndoEmpty": return "Last screenshot removed. Queue is empty.";
+                case "NeedShot": return "No screenshots yet. Capture one first.";
+                case "ClipboardUnavailable": return "Windows Clipboard is unavailable.";
+                case "CopiedStatus": return "Queue: 0 · Copied {0} screenshots to Clipboard";
+                case "CopiedTitle": return "Copied {0} screenshots";
+                case "CopiedBody": return "Apps that support multi-file paste will receive the whole group at once.";
+                case "ClipboardFailed": return "Failed to w
