@@ -1553,4 +1553,119 @@ namespace MultiShot
                 RectangleF label = new RectangleF(dst.Left, dst.Bottom + 2, Math.Max(dst.Width, s.Width + 12), s.Height + 5);
                 using (SolidBrush bg = new SolidBrush(Color.FromArgb(220, 20, 20, 20)))
                     g.FillRectangle(bg, label);
-                using (SolidBrush fg = new 
+                using (SolidBrush fg = new SolidBrush(Color.White))
+                    g.DrawString(pos, font, fg, label.Left + 6, label.Top + 2);
+            }
+        }
+
+        private void DrawSizeBadge(Graphics g, Rectangle rect, string mode)
+        {
+            string sizeText = mode + "  " + rect.Width + " × " + rect.Height;
+            using (Font font = new Font("Segoe UI", 10f, FontStyle.Regular))
+            {
+                SizeF s = g.MeasureString(sizeText, font);
+                float x = rect.Left;
+                float y = rect.Top - s.Height - 10;
+                if (y < 4) y = Math.Min(ClientRectangle.Bottom - s.Height - 8, rect.Top + 6);
+                if (x + s.Width + 12 > ClientRectangle.Right)
+                    x = ClientRectangle.Right - s.Width - 12;
+                if (x < 0) x = 0;
+
+                using (SolidBrush bg = new SolidBrush(Color.FromArgb(220, 20, 20, 20)))
+                    g.FillRectangle(bg, x, y, s.Width + 12, s.Height + 4);
+                using (SolidBrush fg = new SolidBrush(Color.White))
+                    g.DrawString(sizeText, font, fg, x + 6, y + 2);
+            }
+        }
+
+        private void OnMouseDownCapture(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                DialogResult = DialogResult.Cancel;
+                Close();
+                return;
+            }
+            if (e.Button != MouseButtons.Left) return;
+            start = e.Location;
+            current = e.Location;
+            mouseDown = true;
+            manualDrag = false;
+            Invalidate();
+        }
+
+        private void OnMouseMoveCapture(object sender, MouseEventArgs e)
+        {
+            current = e.Location;
+
+            if (mouseDown)
+            {
+                if (!manualDrag && Distance(start, current) >= DragThreshold)
+                    manualDrag = true;
+            }
+            else
+            {
+                UpdateHoverWindow(e.Location);
+            }
+
+            Invalidate();
+        }
+
+        private void OnMouseUpCapture(object sender, MouseEventArgs e)
+        {
+            if (!mouseDown || e.Button != MouseButtons.Left) return;
+            current = e.Location;
+
+            Rectangle rect;
+            if (manualDrag)
+            {
+                rect = Normalize(start, current);
+                if (rect.Width < 3 || rect.Height < 3)
+                {
+                    mouseDown = false;
+                    manualDrag = false;
+                    UpdateHoverWindow(e.Location);
+                    Invalidate();
+                    return;
+                }
+            }
+            else
+            {
+                UpdateHoverWindow(e.Location);
+                if (!hasHoverWindow)
+                {
+                    mouseDown = false;
+                    Invalidate();
+                    return;
+                }
+                rect = hoverWindowRect;
+            }
+
+            mouseDown = false;
+            manualDrag = false;
+            CaptureRectangle(rect);
+        }
+
+        private void CaptureRectangle(Rectangle rect)
+        {
+            Rectangle clipped = Rectangle.Intersect(ClientRectangle, rect);
+            if (clipped.Width < 1 || clipped.Height < 1) return;
+
+            resultBitmap = new Bitmap(clipped.Width, clipped.Height, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(resultBitmap))
+                g.DrawImage(desktop,
+                    new Rectangle(0, 0, clipped.Width, clipped.Height),
+                    clipped, GraphicsUnit.Pixel);
+
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+
+        private void UpdateHoverWindow(Point clientPoint)
+        {
+            Point screenPoint = new Point(clientPoint.X + virtualScreen.Left, clientPoint.Y + virtualScreen.Top);
+            Rectangle screenRect;
+            if (TryFindTopLevelWindowAt(screenPoint, out screenRect))
+            {
+                Rectangle clientRect = new Rectangle(
+          
