@@ -803,4 +803,128 @@ namespace MultiShot
                 int id = m.WParam.ToInt32();
                 if (id == HOTKEY_CAPTURE)
                 {
-      
+                     BeginInvoke((MethodInvoker)delegate { CaptureOne(false); });
+                    return;
+                }
+                if (id == HOTKEY_UNDO)
+                {
+                    BeginInvoke((MethodInvoker)delegate { UndoLast(); });
+                    return;
+                }
+                if (id == HOTKEY_FINISH)
+                {
+                    BeginInvoke((MethodInvoker)delegate { FinishSession(); });
+                    return;
+                }
+            }
+            base.WndProc(ref m);
+        }
+
+        private void OnFormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (!allowExit && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                Hide();
+                trayIcon.ShowBalloonTip(1200, I18n.T("StillRunningTitle"),
+                    I18n.T("StillRunningBody", settings.Capture.ToDisplayString()), ToolTipIcon.Info);
+                return;
+            }
+
+            try
+            {
+                clipboardCleanupTimer.Stop();
+                clipboardCleanupTimer.Dispose();
+            }
+            catch { }
+
+            trayIcon.Visible = false;
+            trayIcon.Dispose();
+            if (trayMenu != null) trayMenu.Dispose();
+        }
+
+        private void PlaceBottomRight()
+        {
+            Rectangle work = Screen.PrimaryScreen.WorkingArea;
+            Location = new Point(work.Right - Width - 16, work.Bottom - Height - 16);
+        }
+
+        private void CaptureOne(bool restoreControllerAfter)
+        {
+            if (isCapturing) return;
+            isCapturing = true;
+            bool captured = false;
+
+            try
+            {
+                CaptureToastForm.DismissActive();
+                Hide();
+                Application.DoEvents();
+                Thread.Sleep(90);
+
+                using (Bitmap shot = RegionCaptureForm.CaptureRegion(capturedFiles.Count))
+                {
+                    if (shot != null)
+                    {
+                        if (string.IsNullOrEmpty(sessionFolder))
+                            sessionFolder = TempStorage.CreateSessionFolder();
+
+                        string file;
+                        do
+                        {
+                            file = Path.Combine(sessionFolder,
+                                "shot-" + nextShotIndex.ToString("000") + ".png");
+                            nextShotIndex++;
+                        }
+                        while (File.Exists(file));
+
+                        shot.Save(file, ImageFormat.Png);
+                        capturedFiles.Add(file);
+                        captured = true;
+                        UpdateTrayText();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(I18n.T("CaptureFailed", ex.Message), "MultiShot",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                isCapturing = false;
+                UpdateUi();
+
+                if (restoreControllerAfter)
+                {
+                    Show();
+                    PlaceBottomRight();
+                }
+                else
+                {
+                    Hide();
+                }
+
+                if (captured)
+                    CaptureToastForm.ShowCaptureCount(capturedFiles.Count, settings.Finish.ToDisplayString());
+            }
+        }
+
+        private void UndoLast()
+        {
+            ReconcileActiveCaptureFiles();
+            if (capturedFiles.Count == 0)
+            {
+                statusLabel.Text = I18n.T("NothingToUndo");
+                return;
+            }
+
+            string file = capturedFiles[capturedFiles.Count - 1];
+            capturedFiles.RemoveAt(capturedFiles.Count - 1);
+            try
+            {
+                if (File.Exists(file)) File.Delete(file);
+            }
+            catch { }
+
+            statusLabel.Text = captu
