@@ -1044,4 +1044,114 @@ namespace MultiShot
                 {
                     StringCollection current = Clipboard.GetFileDropList();
                     foreach (string file in current)
-  
+                         clipboardFiles.Add(file);
+                }
+            }
+            catch
+            {
+                return;
+            }
+
+            for (int i = completedFoldersAwaitingCleanup.Count - 1; i >= 0; i--)
+            {
+                string folder = completedFoldersAwaitingCleanup[i];
+                clipboardStillHasOurFiles = false;
+
+                foreach (string file in clipboardFiles)
+                {
+                    if (IsFileInsideFolder(file, folder))
+                    {
+                        clipboardStillHasOurFiles = true;
+                        break;
+                    }
+                }
+
+                if (!clipboardStillHasOurFiles)
+                {
+                    try
+                    {
+                        if (Directory.Exists(folder))
+                            Directory.Delete(folder, true);
+                        completedFoldersAwaitingCleanup.RemoveAt(i);
+                        cleanedAny = true;
+                    }
+                    catch { }
+                }
+            }
+
+            bool activeChanged = ReconcileActiveCaptureFiles();
+            if ((cleanedAny || activeChanged) && capturedFiles.Count == 0)
+            {
+                statusLabel.Text = I18n.T("NoShots");
+                UpdateTrayText();
+                undoButton.Enabled = false;
+                finishButton.Enabled = false;
+                cancelButton.Enabled = false;
+            }
+        }
+
+        private bool ReconcileActiveCaptureFiles()
+        {
+            int before = capturedFiles.Count;
+            capturedFiles.RemoveAll(delegate(string file)
+            {
+                try { return string.IsNullOrEmpty(file) || !File.Exists(file); }
+                catch { return true; }
+            });
+
+            if (capturedFiles.Count == 0 && before > 0)
+            {
+                string folder = sessionFolder;
+                sessionFolder = null;
+                nextShotIndex = 1;
+                try
+                {
+                    if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder) &&
+                        Directory.GetFileSystemEntries(folder).Length == 0)
+                        Directory.Delete(folder, false);
+                }
+                catch { }
+            }
+
+            return capturedFiles.Count != before;
+        }
+
+        private static bool IsFileInsideFolder(string file, string folder)
+        {
+            try
+            {
+                string fullFile = Path.GetFullPath(file);
+                string fullFolder = Path.GetFullPath(folder);
+                if (!fullFolder.EndsWith(Path.DirectorySeparatorChar.ToString()))
+                    fullFolder += Path.DirectorySeparatorChar;
+                return fullFile.StartsWith(fullFolder, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void RebuildTrayMenu()
+        {
+            ContextMenuStrip old = trayMenu;
+            trayMenu = new ContextMenuStrip();
+            trayMenu.Items.Add(I18n.T("ShowController"), null, delegate
+            {
+                Show();
+                PlaceBottomRight();
+            });
+            trayMenu.Items.Add(new ToolStripSeparator());
+            trayMenu.Items.Add(I18n.T("Capture"), null, delegate { CaptureOne(false); });
+            trayMenu.Items.Add(I18n.T("Undo"), null, delegate { UndoLast(); });
+            trayMenu.Items.Add(I18n.T("Finish"), null, delegate { FinishSession(); });
+            trayMenu.Items.Add(I18n.T("Cancel"), null, delegate { CancelSession(); });
+            trayMenu.Items.Add(new ToolStripSeparator());
+            trayMenu.Items.Add(I18n.T("Settings"), null, delegate { OpenSettings(); });
+            trayMenu.Items.Add(new ToolStripSeparator());
+            trayMenu.Items.Add(I18n.T("Exit"), null, delegate
+            {
+                allowExit = true;
+                Close();
+            });
+          
