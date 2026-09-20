@@ -1466,4 +1466,91 @@ namespace MultiShot
                         e.Graphics.DrawRectangle(pen, clipped);
                     }
 
-                    DrawSizeBadge(e.Graphics, clipped, isManual ? I18n.T("ModeManual") 
+                    DrawSizeBadge(e.Graphics, clipped, isManual ? I18n.T("ModeManual") : I18n.T("ModeWindow"));
+                }
+            }
+
+            if (isManual)
+                DrawMagnifier(e.Graphics);
+
+            DrawInstruction(e.Graphics);
+            DrawCounterBadge(e.Graphics);
+        }
+
+        private void DrawInstruction(Graphics g)
+        {
+            string text = I18n.T("OverlayInstruction");
+            using (Font font = new Font("Segoe UI", 10f, FontStyle.Regular))
+            {
+                SizeF size = g.MeasureString(text, font);
+                RectangleF box = new RectangleF(18, 18, size.Width + 24, size.Height + 12);
+                using (SolidBrush bg = new SolidBrush(Color.FromArgb(220, 20, 20, 20)))
+                    g.FillRectangle(bg, box);
+                using (SolidBrush fg = new SolidBrush(Color.White))
+                    g.DrawString(text, font, fg, box.Left + 12, box.Top + 6);
+            }
+        }
+
+
+        private void DrawCounterBadge(Graphics g)
+        {
+            string text = I18n.T("OverlayCount", currentCount);
+            using (Font font = new Font("Segoe UI", 10f, FontStyle.Bold))
+            {
+                SizeF size = g.MeasureString(text, font);
+                float width = size.Width + 24;
+                float height = size.Height + 12;
+                float x = ClientRectangle.Right - width - 18;
+                float y = 18;
+                using (SolidBrush bg = new SolidBrush(Color.FromArgb(220, 20, 20, 20)))
+                    g.FillRectangle(bg, x, y, width, height);
+                using (SolidBrush fg = new SolidBrush(Color.White))
+                    g.DrawString(text, font, fg, x + 12, y + 6);
+            }
+        }
+
+        private void DrawMagnifier(Graphics g)
+        {
+            const int sourceSize = 11;
+            const int scale = 8;
+            int half = sourceSize / 2;
+            int sourceX = Math.Max(0, Math.Min(desktop.Width - sourceSize, current.X - half));
+            int sourceY = Math.Max(0, Math.Min(desktop.Height - sourceSize, current.Y - half));
+            Rectangle src = new Rectangle(sourceX, sourceY, sourceSize, sourceSize);
+            int lensSize = sourceSize * scale;
+
+            int x = current.X + 24;
+            int y = current.Y + 24;
+            if (x + lensSize + 4 > ClientRectangle.Right) x = current.X - lensSize - 24;
+            if (y + lensSize + 26 > ClientRectangle.Bottom) y = current.Y - lensSize - 34;
+            x = Math.Max(4, Math.Min(ClientRectangle.Right - lensSize - 4, x));
+            y = Math.Max(4, Math.Min(ClientRectangle.Bottom - lensSize - 26, y));
+
+            Rectangle dst = new Rectangle(x, y, lensSize, lensSize);
+            InterpolationMode oldMode = g.InterpolationMode;
+            PixelOffsetMode oldPixel = g.PixelOffsetMode;
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            g.DrawImage(desktop, dst, src, GraphicsUnit.Pixel);
+            g.InterpolationMode = oldMode;
+            g.PixelOffsetMode = oldPixel;
+
+            using (Pen border = new Pen(Color.White, 2f))
+                g.DrawRectangle(border, dst);
+
+            int cx = dst.Left + lensSize / 2;
+            int cy = dst.Top + lensSize / 2;
+            using (Pen cross = new Pen(Color.FromArgb(230, 255, 70, 70), 1f))
+            {
+                g.DrawLine(cross, cx, dst.Top, cx, dst.Bottom);
+                g.DrawLine(cross, dst.Left, cy, dst.Right, cy);
+            }
+
+            string pos = (current.X + virtualScreen.Left) + ", " + (current.Y + virtualScreen.Top);
+            using (Font font = new Font("Segoe UI", 8.5f, FontStyle.Regular))
+            {
+                SizeF s = g.MeasureString(pos, font);
+                RectangleF label = new RectangleF(dst.Left, dst.Bottom + 2, Math.Max(dst.Width, s.Width + 12), s.Height + 5);
+                using (SolidBrush bg = new SolidBrush(Color.FromArgb(220, 20, 20, 20)))
+                    g.FillRectangle(bg, label);
+                using (SolidBrush fg = new 
