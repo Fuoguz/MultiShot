@@ -927,4 +927,121 @@ namespace MultiShot
             }
             catch { }
 
-            statusLabel.Text = captu
+            statusLabel.Text = capturedFiles.Count > 0
+                ? I18n.T("UndoRemaining", capturedFiles.Count)
+                : I18n.T("UndoEmpty");
+            UpdateTrayText();
+            UpdateUi();
+        }
+
+        private void FinishSession()
+        {
+            CaptureToastForm.DismissActive();
+            ReconcileActiveCaptureFiles();
+            if (capturedFiles.Count == 0)
+            {
+                statusLabel.Text = I18n.T("NeedShot");
+                Show();
+                return;
+            }
+
+            try
+            {
+                DataObject data = new DataObject();
+                StringCollection files = new StringCollection();
+                files.AddRange(capturedFiles.ToArray());
+                data.SetFileDropList(files);
+
+                using (Bitmap preview = ClipboardImageBuilder.CreatePreview(capturedFiles))
+                {
+                    if (preview != null)
+                        data.SetData(DataFormats.Bitmap, true, new Bitmap(preview));
+                }
+
+                bool copied = false;
+                Exception lastError = null;
+                for (int i = 0; i < 6 && !copied; i++)
+                {
+                    try
+                    {
+                        Clipboard.SetDataObject(data, true);
+                        copied = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastError = ex;
+                        Thread.Sleep(100);
+                    }
+                }
+
+                if (!copied)
+                    throw lastError ?? new Exception(I18n.T("ClipboardUnavailable"));
+
+                int count = capturedFiles.Count;
+                string completedFolder = sessionFolder;
+                capturedFiles.Clear();
+                sessionFolder = null;
+                nextShotIndex = 1;
+                if (!string.IsNullOrEmpty(completedFolder))
+                    completedFoldersAwaitingCleanup.Add(completedFolder);
+                statusLabel.Text = I18n.T("CopiedStatus", count);
+                UpdateTrayText();
+                trayIcon.ShowBalloonTip(1200, I18n.T("CopiedTitle", count),
+                    I18n.T("CopiedBody"), ToolTipIcon.Info);
+                UpdateUi();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(I18n.T("ClipboardFailed", ex.Message), "MultiShot",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void CancelSession()
+        {
+            CaptureToastForm.DismissActive();
+            string folder = sessionFolder;
+            capturedFiles.Clear();
+            sessionFolder = null;
+            nextShotIndex = 1;
+            try
+            {
+                if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+            }
+            catch { }
+            statusLabel.Text = I18n.T("Cancelled");
+            UpdateTrayText();
+            UpdateUi();
+        }
+
+        private void UpdateTrayText()
+        {
+            try
+            {
+                string text = capturedFiles.Count > 0
+                    ? I18n.T("TrayPending", capturedFiles.Count)
+                    : I18n.T("TrayIdle");
+                trayIcon.Text = text.Length > 63 ? text.Substring(0, 63) : text;
+            }
+            catch { }
+        }
+
+        private void CleanupCompletedFoldersIfSafe()
+        {
+            if (completedFoldersAwaitingCleanup.Count == 0)
+            {
+                ReconcileActiveCaptureFiles();
+                return;
+            }
+
+            bool cleanedAny = false;
+            bool clipboardStillHasOurFiles = false;
+            List<string> clipboardFiles = new List<string>();
+            try
+            {
+                if (Clipboard.ContainsFileDropList())
+                {
+                    StringCollection current = Clipboard.GetFileDropList();
+                    foreach (string file in current)
+  
