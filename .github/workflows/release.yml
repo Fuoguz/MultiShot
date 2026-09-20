@@ -45,13 +45,13 @@ jobs:
           "PACKAGE_NAME=$name" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Publish GitHub Release if missing
-        shell: powershell
+        shell: cmd
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view $env:TAG *> $null
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Release $env:TAG already exists; skipping."
-            exit 0
-          }
-          gh release create $env:TAG $env:PACKAGE_NAME --target $env:GITHUB_SHA --title "MultiShot $env:TAG" --notes-file RELEASE_NOTES.md
+          gh release view "%TAG%" >nul 2>nul
+          if %ERRORLEVEL% EQU 0 (
+            echo Release %TAG% already exists; skipping.
+            exit /b 0
+          )
+          gh release create "%TAG%" "%PACKAGE_NAME%" --target "%GITHUB_SHA%" --title "MultiShot %TAG%" --notes-file RELEASE_NOTES.md
