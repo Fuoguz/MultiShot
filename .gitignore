@@ -17,3 +17,7 @@ Desktop.ini
 # Temporary / logs
 *.log
 *.tmp
+
+# Generated build assets
+MultiShot.ico
+IconBuilder.exe
