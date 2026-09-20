@@ -1154,4 +1154,91 @@ namespace MultiShot
                 allowExit = true;
                 Close();
             });
-          
+             trayIcon.ContextMenuStrip = trayMenu;
+            if (old != null)
+            {
+                try { old.Dispose(); } catch { }
+            }
+        }
+
+        private void RegisterCurrentHotkeys()
+        {
+            captureHotkeyOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_CAPTURE,
+                settings.Capture.Modifiers, (uint)settings.Capture.Key);
+            undoHotkeyOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_UNDO,
+                settings.Undo.Modifiers, (uint)settings.Undo.Key);
+            finishHotkeyOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_FINISH,
+                settings.Finish.Modifiers, (uint)settings.Finish.Key);
+        }
+
+        private void UnregisterAllHotkeys()
+        {
+            try { NativeMethods.UnregisterHotKey(Handle, HOTKEY_CAPTURE); } catch { }
+            try { NativeMethods.UnregisterHotKey(Handle, HOTKEY_UNDO); } catch { }
+            try { NativeMethods.UnregisterHotKey(Handle, HOTKEY_FINISH); } catch { }
+            captureHotkeyOk = finishHotkeyOk = undoHotkeyOk = false;
+        }
+
+        private bool TryApplyHotkeys(HotkeyDefinition capture, HotkeyDefinition undo, HotkeyDefinition finish, out string failedHotkey)
+        {
+            failedHotkey = null;
+            HotkeyDefinition oldCapture = settings.Capture.Clone();
+            HotkeyDefinition oldUndo = settings.Undo.Clone();
+            HotkeyDefinition oldFinish = settings.Finish.Clone();
+
+            UnregisterAllHotkeys();
+            bool capOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_CAPTURE, capture.Modifiers, (uint)capture.Key);
+            if (!capOk) failedHotkey = capture.ToDisplayString();
+            bool undoOk = false;
+            bool finishOk = false;
+            if (capOk)
+            {
+                undoOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_UNDO, undo.Modifiers, (uint)undo.Key);
+                if (!undoOk) failedHotkey = undo.ToDisplayString();
+            }
+            if (capOk && undoOk)
+            {
+                finishOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_FINISH, finish.Modifiers, (uint)finish.Key);
+                if (!finishOk) failedHotkey = finish.ToDisplayString();
+            }
+
+            if (!(capOk && undoOk && finishOk))
+            {
+                UnregisterAllHotkeys();
+                captureHotkeyOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_CAPTURE, oldCapture.Modifiers, (uint)oldCapture.Key);
+                undoHotkeyOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_UNDO, oldUndo.Modifiers, (uint)oldUndo.Key);
+                finishHotkeyOk = NativeMethods.RegisterHotKey(Handle, HOTKEY_FINISH, oldFinish.Modifiers, (uint)oldFinish.Key);
+                return false;
+            }
+
+            captureHotkeyOk = undoHotkeyOk = finishHotkeyOk = true;
+            settings.Capture = capture.Clone();
+            settings.Undo = undo.Clone();
+            settings.Finish = finish.Clone();
+            return true;
+        }
+
+        private void OpenSettings()
+        {
+            CaptureToastForm.DismissActive();
+            using (SettingsForm dialog = new SettingsForm(settings))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                bool hotkeysChanged = !settings.Capture.SameAs(dialog.CaptureHotkey) ||
+                    !settings.Undo.SameAs(dialog.UndoHotkey) ||
+                    !settings.Finish.SameAs(dialog.FinishHotkey);
+                if (hotkeysChanged)
+                {
+                    string failed;
+                    if (!TryApplyHotkeys(dialog.CaptureHotkey, dialog.UndoHotkey, dialog.FinishHotkey, out failed))
+                    {
+                        MessageBox.Show(I18n.T("HotkeyConflict", failed), "MultiShot",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        UpdateUi();
+                        return;
+                    }
+                }
+
+                settings.Language = dialog.SelectedLanguage;
+    
