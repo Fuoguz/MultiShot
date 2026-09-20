@@ -671,4 +671,136 @@ namespace MultiShot
         {
             this.settings = settings;
             Text = "MultiShot";
-          
+             Width = 638;
+            Height = 132;
+            FormBorderStyle = FormBorderStyle.FixedToolWindow;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            TopMost = true;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+
+            statusLabel = new Label
+            {
+                Left = 14,
+                Top = 12,
+                Width = 598,
+                Height = 22,
+                Text = I18n.T("NoShots")
+            };
+
+            hintLabel = new Label
+            {
+                Left = 14,
+                Top = 34,
+                Width = 598,
+                Height = 20,
+                Text = string.Empty
+            };
+
+            captureButton = new Button
+            {
+                Left = 14,
+                Top = 64,
+                Width = 96,
+                Height = 28,
+                Text = I18n.T("Capture")
+            };
+            captureButton.Click += delegate { CaptureOne(true); };
+
+            undoButton = new Button
+            {
+                Left = 118,
+                Top = 64,
+                Width = 110,
+                Height = 28,
+                Text = I18n.T("Undo")
+            };
+            undoButton.Click += delegate { UndoLast(); };
+
+            finishButton = new Button
+            {
+                Left = 236,
+                Top = 64,
+                Width = 120,
+                Height = 28,
+                Text = I18n.T("Finish")
+            };
+            finishButton.Click += delegate { FinishSession(); };
+
+            cancelButton = new Button
+            {
+                Left = 364,
+                Top = 64,
+                Width = 112,
+                Height = 28,
+                Text = I18n.T("Cancel")
+            };
+            cancelButton.Click += delegate { CancelSession(); };
+
+            settingsButton = new Button
+            {
+                Left = 484,
+                Top = 64,
+                Width = 128,
+                Height = 28,
+                Text = I18n.T("Settings")
+            };
+            settingsButton.Click += delegate { OpenSettings(); };
+
+            Controls.Add(statusLabel);
+            Controls.Add(hintLabel);
+            Controls.Add(captureButton);
+            Controls.Add(undoButton);
+            Controls.Add(finishButton);
+            Controls.Add(cancelButton);
+            Controls.Add(settingsButton);
+
+            trayIcon = new NotifyIcon
+            {
+                Icon = SystemIcons.Application,
+                Text = I18n.T("TrayIdle"),
+                Visible = true
+            };
+            RebuildTrayMenu();
+            trayIcon.DoubleClick += delegate { CaptureOne(false); };
+
+            clipboardCleanupTimer = new System.Windows.Forms.Timer();
+            clipboardCleanupTimer.Interval = 15000;
+            clipboardCleanupTimer.Tick += delegate { CleanupCompletedFoldersIfSafe(); };
+            clipboardCleanupTimer.Start();
+
+            Shown += delegate { PlaceBottomRight(); };
+
+            FormClosing += OnFormClosing;
+            UpdateUi();
+        }
+
+        protected override bool ShowWithoutActivation
+        {
+            get { return true; }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            RegisterCurrentHotkeys();
+            UpdateUi();
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e)
+        {
+            try { NativeMethods.UnregisterHotKey(Handle, HOTKEY_CAPTURE); } catch { }
+            try { NativeMethods.UnregisterHotKey(Handle, HOTKEY_UNDO); } catch { }
+            try { NativeMethods.UnregisterHotKey(Handle, HOTKEY_FINISH); } catch { }
+            base.OnHandleDestroyed(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == NativeMethods.WM_HOTKEY)
+            {
+                int id = m.WParam.ToInt32();
+                if (id == HOTKEY_CAPTURE)
+                {
+      
