@@ -1,0 +1,19 @@
+# Build output
+MultiShot.exe
+*.pdb
+*.zip
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Temporary / logs
+*.log
+*.tmp
