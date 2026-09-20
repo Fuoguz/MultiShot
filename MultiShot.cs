@@ -556,4 +556,119 @@ namespace MultiShot
                 MessageBox.Show(I18n.T("ModifierRequired"), "MultiShot", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (capture.
+            if (capture.SameAs(undo) || capture.SameAs(finish) || undo.SameAs(finish))
+            {
+                MessageBox.Show(I18n.T("DuplicateHotkeys"), "MultiShot", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            SelectedLanguage = languageCombo.SelectedIndex == 1 ? "zh-CN" : languageCombo.SelectedIndex == 2 ? "en" : "auto";
+            CaptureHotkey = capture;
+            UndoHotkey = undo;
+            FinishHotkey = finish;
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+    }
+
+    internal static class Program
+    {
+        [STAThread]
+        private static void Main()
+        {
+            try
+            {
+                if (!NativeMethods.SetProcessDpiAwarenessContext(new IntPtr(-4)))
+                    NativeMethods.SetProcessDPIAware();
+            }
+            catch
+            {
+                try { NativeMethods.SetProcessDPIAware(); } catch { }
+            }
+
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            AppSettings settings = AppSettings.Load();
+            I18n.SetLanguage(settings.Language);
+
+            bool createdNew;
+            using (Mutex singleInstance = new Mutex(true, @"Local\MultiShotSingleInstance", out createdNew))
+            {
+                if (!createdNew)
+                {
+                    MessageBox.Show(I18n.T("AlreadyRunning", settings.Capture.ToDisplayString()),
+                        "MultiShot", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                TempStorage.CleanupOldSessions();
+                Application.Run(new MainForm(settings));
+            }
+        }
+    }
+
+    internal static class TempStorage
+    {
+        private static readonly string Root = Path.Combine(Path.GetTempPath(), "MultiShotClipboard");
+
+        internal static string CreateSessionFolder()
+        {
+            Directory.CreateDirectory(Root);
+            string folder = Path.Combine(Root, DateTime.Now.ToString("yyyyMMdd-HHmmss-fff"));
+            Directory.CreateDirectory(folder);
+            return folder;
+        }
+
+        internal static void CleanupOldSessions()
+        {
+            try
+            {
+                if (!Directory.Exists(Root)) return;
+                foreach (string dir in Directory.GetDirectories(Root))
+                {
+                    try
+                    {
+                        if (Directory.GetCreationTime(dir) < DateTime.Now.AddDays(-2))
+                            Directory.Delete(dir, true);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+    }
+
+    internal sealed class MainForm : Form
+    {
+        private const int HOTKEY_CAPTURE = 1001;
+        private const int HOTKEY_FINISH = 1002;
+        private const int HOTKEY_UNDO = 1003;
+
+        private readonly Label statusLabel;
+        private readonly Label hintLabel;
+        private readonly Button captureButton;
+        private readonly Button undoButton;
+        private readonly Button finishButton;
+        private readonly Button cancelButton;
+        private readonly Button settingsButton;
+        private readonly NotifyIcon trayIcon;
+        private ContextMenuStrip trayMenu;
+        private readonly AppSettings settings;
+        private readonly List<string> capturedFiles = new List<string>();
+        private readonly List<string> completedFoldersAwaitingCleanup = new List<string>();
+        private readonly System.Windows.Forms.Timer clipboardCleanupTimer;
+
+        private string sessionFolder;
+        private int nextShotIndex = 1;
+        private bool isCapturing;
+        private bool allowExit;
+        private bool captureHotkeyOk;
+        private bool finishHotkeyOk;
+        private bool undoHotkeyOk;
+
+        internal MainForm(AppSettings settings)
+        {
+            this.settings = settings;
+            Text = "MultiShot";
+          
