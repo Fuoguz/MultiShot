@@ -437,4 +437,123 @@ namespace MultiShot
             AddLabel(I18n.T("CaptureHotkey"), 20, 65, 130);
             captureBox = CreateHotkeyBox(settings.Capture, 62);
             AddLabel(I18n.T("UndoHotkey"), 20, 105, 130);
-            undoBox = CreateHotkeyBox(setti
+            undoBox = CreateHotkeyBox(settings.Undo, 102);
+            AddLabel(I18n.T("FinishHotkey"), 20, 145, 130);
+            finishBox = CreateHotkeyBox(settings.Finish, 142);
+
+            helpLabel = new Label
+            {
+                Left = 20,
+                Top = 182,
+                Width = 370,
+                Height = 34,
+                Text = I18n.T("HotkeyHelp")
+            };
+            Controls.Add(helpLabel);
+
+            resetButton = new Button
+            {
+                Left = 20,
+                Top = 226,
+                Width = 110,
+                Height = 28,
+                Text = I18n.T("ResetDefaults")
+            };
+            resetButton.Click += delegate
+            {
+                SetBoxHotkey(captureBox, HotkeyDefinition.CaptureDefault());
+                SetBoxHotkey(undoBox, HotkeyDefinition.UndoDefault());
+                SetBoxHotkey(finishBox, HotkeyDefinition.FinishDefault());
+            };
+            Controls.Add(resetButton);
+
+            cancelButton = new Button
+            {
+                Left = 206,
+                Top = 226,
+                Width = 84,
+                Height = 28,
+                Text = I18n.T("Close"),
+                DialogResult = DialogResult.Cancel
+            };
+            Controls.Add(cancelButton);
+
+            saveButton = new Button
+            {
+                Left = 300,
+                Top = 226,
+                Width = 90,
+                Height = 28,
+                Text = I18n.T("Save")
+            };
+            saveButton.Click += OnSave;
+            Controls.Add(saveButton);
+
+            AcceptButton = saveButton;
+            CancelButton = cancelButton;
+        }
+
+        private void AddLabel(string text, int left, int top, int width)
+        {
+            Label label = new Label { Left = left, Top = top, Width = width, Height = 24, Text = text, TextAlign = ContentAlignment.MiddleLeft };
+            Controls.Add(label);
+        }
+
+        private TextBox CreateHotkeyBox(HotkeyDefinition hotkey, int top)
+        {
+            TextBox box = new TextBox
+            {
+                Left = 170,
+                Top = top,
+                Width = 220,
+                ReadOnly = true,
+                Tag = hotkey.Clone(),
+                Text = hotkey.ToDisplayString()
+            };
+            box.KeyDown += OnHotkeyKeyDown;
+            Controls.Add(box);
+            return box;
+        }
+
+        private static void SetBoxHotkey(TextBox box, HotkeyDefinition hotkey)
+        {
+            box.Tag = hotkey.Clone();
+            box.Text = hotkey.ToDisplayString();
+        }
+
+        private void OnHotkeyKeyDown(object sender, KeyEventArgs e)
+        {
+            TextBox box = sender as TextBox;
+            if (box == null) return;
+            e.SuppressKeyPress = true;
+            e.Handled = true;
+
+            if (HotkeyDefinition.IsModifierKey(e.KeyCode)) return;
+            if (e.KeyCode == Keys.Escape && !e.Control && !e.Alt && !e.Shift) return;
+
+            uint modifiers = 0;
+            if (e.Control) modifiers |= NativeMethods.MOD_CONTROL;
+            if (e.Alt) modifiers |= NativeMethods.MOD_ALT;
+            if (e.Shift) modifiers |= NativeMethods.MOD_SHIFT;
+
+            if (modifiers == 0)
+            {
+                System.Media.SystemSounds.Beep.Play();
+                return;
+            }
+
+            SetBoxHotkey(box, new HotkeyDefinition(modifiers, e.KeyCode));
+        }
+
+        private void OnSave(object sender, EventArgs e)
+        {
+            HotkeyDefinition capture = ((HotkeyDefinition)captureBox.Tag).Clone();
+            HotkeyDefinition undo = ((HotkeyDefinition)undoBox.Tag).Clone();
+            HotkeyDefinition finish = ((HotkeyDefinition)finishBox.Tag).Clone();
+
+            if (capture.Modifiers == 0 || undo.Modifiers == 0 || finish.Modifiers == 0)
+            {
+                MessageBox.Show(I18n.T("ModifierRequired"), "MultiShot", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (capture.
