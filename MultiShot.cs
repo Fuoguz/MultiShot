@@ -1241,4 +1241,118 @@ namespace MultiShot
                 }
 
                 settings.Language = dialog.SelectedLanguage;
-    
+                 I18n.SetLanguage(settings.Language);
+                try { settings.Save(); } catch { }
+                ApplyLocalization();
+                MessageBox.Show(I18n.T("SettingsSavedBody"), I18n.T("SettingsSaved"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void ApplyLocalization()
+        {
+            captureButton.Text = I18n.T("Capture");
+            undoButton.Text = I18n.T("Undo");
+            finishButton.Text = I18n.T("Finish");
+            cancelButton.Text = I18n.T("Cancel");
+            settingsButton.Text = I18n.T("Settings");
+            if (capturedFiles.Count == 0) statusLabel.Text = I18n.T("NoShots");
+            RebuildTrayMenu();
+            UpdateUi();
+        }
+
+        private void UpdateUi()
+        {
+            bool activeChanged = ReconcileActiveCaptureFiles();
+            UpdateTrayText();
+
+            if (capturedFiles.Count > 0)
+            {
+                statusLabel.Text = I18n.T("Capturing", capturedFiles.Count);
+                undoButton.Enabled = true;
+                finishButton.Enabled = true;
+                cancelButton.Enabled = true;
+            }
+            else
+            {
+                if (activeChanged)
+                    statusLabel.Text = I18n.T("NoShots");
+                undoButton.Enabled = false;
+                finishButton.Enabled = false;
+                cancelButton.Enabled = false;
+            }
+
+            if (captureHotkeyOk && finishHotkeyOk && undoHotkeyOk)
+                hintLabel.Text = I18n.T("Hint", settings.Capture.ToDisplayString(), settings.Undo.ToDisplayString(), settings.Finish.ToDisplayString());
+            else
+                hintLabel.Text = I18n.T("HintPartial");
+        }
+    }
+
+    internal sealed class CaptureToastForm : Form
+    {
+        private static CaptureToastForm activeToast;
+        private readonly System.Windows.Forms.Timer closeTimer;
+
+        private CaptureToastForm(string text)
+        {
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
+            TopMost = true;
+            StartPosition = FormStartPosition.Manual;
+            BackColor = Color.FromArgb(32, 32, 32);
+            Width = 250;
+            Height = 52;
+            Opacity = 0.93;
+
+            Label label = new Label
+            {
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 10f, FontStyle.Regular),
+                Text = text
+            };
+            Controls.Add(label);
+
+            Rectangle work = Screen.FromPoint(Cursor.Position).WorkingArea;
+            Location = new Point(work.Right - Width - 18, work.Bottom - Height - 18);
+
+            closeTimer = new System.Windows.Forms.Timer();
+            closeTimer.Interval = 1100;
+            closeTimer.Tick += delegate
+            {
+                closeTimer.Stop();
+                Close();
+            };
+            Shown += delegate { closeTimer.Start(); };
+        }
+
+        protected override bool ShowWithoutActivation
+        {
+            get { return true; }
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                const int WS_EX_NOACTIVATE = 0x08000000;
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= WS_EX_NOACTIVATE;
+                return cp;
+            }
+        }
+
+        internal static void ShowCaptureCount(int count, string finishShortcut)
+        {
+            DismissActive();
+            CaptureToastForm toast = new CaptureToastForm(
+                I18n.T("Toast", count, finishShortcut));
+            activeToast = toast;
+            toast.FormClosed += delegate
+            {
+                if (object.ReferenceEquals(activeToast, toast))
+                    activeToast = null;
+                try { t
