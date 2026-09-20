@@ -1355,4 +1355,115 @@ namespace MultiShot
             {
                 if (object.ReferenceEquals(activeToast, toast))
                     activeToast = null;
-                try { t
+                try { toast.Dispose(); } catch { }
+            };
+            toast.Show();
+        }
+
+        internal static void DismissActive()
+        {
+            CaptureToastForm toast = activeToast;
+            activeToast = null;
+            if (toast == null) return;
+            try
+            {
+                if (!toast.IsDisposed) toast.Close();
+            }
+            catch { }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && closeTimer != null)
+                closeTimer.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
+    internal sealed class RegionCaptureForm : Form
+    {
+        private const int DragThreshold = 6;
+
+        private readonly Bitmap desktop;
+        private readonly Rectangle virtualScreen;
+        private readonly uint currentProcessId;
+        private Point start;
+        private Point current;
+        private bool mouseDown;
+        private bool manualDrag;
+        private Rectangle hoverWindowRect;
+        private bool hasHoverWindow;
+        private Bitmap resultBitmap;
+        private readonly int currentCount;
+
+        private RegionCaptureForm(int currentCount)
+        {
+            this.currentCount = currentCount;
+            virtualScreen = SystemInformation.VirtualScreen;
+            Bounds = virtualScreen;
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            ShowInTaskbar = false;
+            TopMost = true;
+            Cursor = Cursors.Cross;
+            KeyPreview = true;
+            DoubleBuffered = true;
+            currentProcessId = (uint)Process.GetCurrentProcess().Id;
+
+            desktop = new Bitmap(virtualScreen.Width, virtualScreen.Height, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(desktop))
+            {
+                g.CopyFromScreen(virtualScreen.Left, virtualScreen.Top, 0, 0,
+                    virtualScreen.Size, CopyPixelOperation.SourceCopy);
+            }
+
+            MouseDown += OnMouseDownCapture;
+            MouseMove += OnMouseMoveCapture;
+            MouseUp += OnMouseUpCapture;
+            KeyDown += OnKeyDownCapture;
+            Shown += delegate
+            {
+                UpdateHoverWindow(PointToClient(Cursor.Position));
+                Invalidate();
+            };
+        }
+
+        internal static Bitmap CaptureRegion(int currentCount)
+        {
+            using (RegionCaptureForm form = new RegionCaptureForm(currentCount))
+            {
+                DialogResult result = form.ShowDialog();
+                if (result == DialogResult.OK && form.resultBitmap != null)
+                    return form.resultBitmap;
+                return null;
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            e.Graphics.DrawImageUnscaled(desktop, 0, 0);
+            using (SolidBrush shade = new SolidBrush(Color.FromArgb(118, 0, 0, 0)))
+                e.Graphics.FillRectangle(shade, ClientRectangle);
+
+            Rectangle selected = Rectangle.Empty;
+            bool isManual = mouseDown && manualDrag;
+
+            if (isManual)
+                selected = Normalize(start, current);
+            else if (hasHoverWindow)
+                selected = hoverWindowRect;
+
+            if (selected.Width > 0 && selected.Height > 0)
+            {
+                Rectangle clipped = Rectangle.Intersect(ClientRectangle, selected);
+                if (clipped.Width > 0 && clipped.Height > 0)
+                {
+                    e.Graphics.DrawImage(desktop, clipped, clipped, GraphicsUnit.Pixel);
+                    using (Pen pen = new Pen(isManual ? Color.White : Color.DeepSkyBlue, 2f))
+                    {
+                        pen.Alignment = PenAlignment.Inset;
+                        e.Graphics.DrawRectangle(pen, clipped);
+                    }
+
+                    DrawSizeBadge(e.Graphics, clipped, isManual ? I18n.T("ModeManual") 
