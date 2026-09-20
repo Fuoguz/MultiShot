@@ -1,5 +1,9 @@
 # MultiShot
 
+<p align="center"><img src="assets/icon.svg" width="128" alt="MultiShot 应用图标"></p>
+
+<p align="center"><a href="https://github.com/Fuoguz/MultiShot/releases/latest"><strong>下载最新 Windows 版本</strong></a></p>
+
 [English](README.md)
 
 **连续截图，一次粘贴。**
