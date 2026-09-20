@@ -204,4 +204,96 @@ namespace MultiShot
                 foreach (string rawLine in File.ReadAllLines(SettingsFile))
                 {
                     string line = rawLine.Trim();
-                    if (line.Length == 0 || line.StartsWith("#")
+                    if (line.Length == 0 || line.StartsWith("#")) continue;
+                    int split = line.IndexOf('=');
+                    if (split <= 0) continue;
+                    string key = line.Substring(0, split).Trim();
+                    string value = line.Substring(split + 1).Trim();
+
+                    if (key.Equals("language", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (value == "auto" || value == "zh-CN" || value == "en")
+                            settings.Language = value;
+                    }
+                    else if (key.Equals("capture", StringComparison.OrdinalIgnoreCase))
+                    {
+                        HotkeyDefinition hotkey;
+                        if (HotkeyDefinition.TryParse(value, out hotkey)) settings.Capture = hotkey;
+                    }
+                    else if (key.Equals("undo", StringComparison.OrdinalIgnoreCase))
+                    {
+                        HotkeyDefinition hotkey;
+                        if (HotkeyDefinition.TryParse(value, out hotkey)) settings.Undo = hotkey;
+                    }
+                    else if (key.Equals("finish", StringComparison.OrdinalIgnoreCase))
+                    {
+                        HotkeyDefinition hotkey;
+                        if (HotkeyDefinition.TryParse(value, out hotkey)) settings.Finish = hotkey;
+                    }
+                }
+            }
+            catch { }
+
+            if (settings.Capture.Modifiers == 0 || settings.Undo.Modifiers == 0 || settings.Finish.Modifiers == 0 ||
+                settings.Capture.SameAs(settings.Undo) || settings.Capture.SameAs(settings.Finish) ||
+                settings.Undo.SameAs(settings.Finish))
+            {
+                settings.Capture = HotkeyDefinition.CaptureDefault();
+                settings.Undo = HotkeyDefinition.UndoDefault();
+                settings.Finish = HotkeyDefinition.FinishDefault();
+            }
+            return settings;
+        }
+
+        internal void Save()
+        {
+            Directory.CreateDirectory(SettingsFolder);
+            File.WriteAllLines(SettingsFile, new string[]
+            {
+                "# MultiShot settings",
+                "language=" + Language,
+                "capture=" + Capture.ToConfigString(),
+                "undo=" + Undo.ToConfigString(),
+                "finish=" + Finish.ToConfigString()
+            });
+        }
+    }
+
+    internal static class I18n
+    {
+        private static bool useChinese = true;
+
+        internal static void SetLanguage(string language)
+        {
+            if (language == "zh-CN") useChinese = true;
+            else if (language == "en") useChinese = false;
+            else useChinese = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("zh", StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static string T(string key, params object[] args)
+        {
+            string text = useChinese ? Zh(key) : En(key);
+            if (args != null && args.Length > 0)
+                return string.Format(CultureInfo.CurrentCulture, text, args);
+            return text;
+        }
+
+        private static string Zh(string key)
+        {
+            switch (key)
+            {
+                case "AlreadyRunning": return "MultiShot 已经在运行。\n\n可在右下角托盘找到它，或直接使用 {0} 截图。";
+                case "NoShots": return "当前没有待处理截图";
+                case "Capture": return "截图";
+                case "Undo": return "撤销上一张";
+                case "Finish": return "完成并复制";
+                case "Cancel": return "取消整组";
+                case "Settings": return "设置";
+                case "ShowController": return "显示控制条";
+                case "Exit": return "退出";
+                case "TrayIdle": return "MultiShot - 连续截图剪贴板";
+                case "TrayPending": return "MultiShot - {0} 张待完成";
+                case "StillRunningTitle": return "MultiShot 仍在运行";
+                case "StillRunningBody": return "按 {0} 可继续截图。";
+                case "CaptureFailed": return "截图失败：\n{0}";
+                case 
