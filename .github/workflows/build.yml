@@ -1,0 +1,40 @@
+name: Windows build
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        shell: cmd
+        run: call build.bat
+
+      - name: Verify output
+        shell: powershell
+        run: |
+          if (!(Test-Path "MultiShot.exe")) {
+            throw "MultiShot.exe was not produced"
+          }
+
+      - name: Package
+        shell: powershell
+        run: |
+          $version = (Get-Content VERSION.txt -Raw).Trim()
+          $name = "MultiShot-v$version-windows.zip"
+          Compress-Archive -Path MultiShot.exe, README.md, README.zh-CN.md, CHANGELOG.md -DestinationPath $name -Force
+          "PACKAGE_NAME=$name" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MultiShot-Windows
+          path: ${{ env.PACKAGE_NAME }}
