@@ -1,5 +1,9 @@
 # MultiShot
 
+<p align="center"><img src="assets/icon.svg" width="128" alt="MultiShot app icon"></p>
+
+<p align="center"><a href="https://github.com/Fuoguz/MultiShot/releases/latest"><strong>Download latest Windows release</strong></a></p>
+
 [简体中文](README.zh-CN.md)
 
 **Capture several screenshots. Paste them all at once.**
